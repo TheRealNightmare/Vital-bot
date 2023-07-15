@@ -4,7 +4,7 @@ import yt_dlp
 import asyncio
 import os
 
-TOKEN = 'Bot Token'
+TOKEN = 'MTEwNzM0NjI5NjMyMDMxNTUxMw.GduLCH.gqyCWhIKNChDjd2Tdn9KiYb_r8iyR7w_v3jtOc'
 
 intents = discord.Intents().all()
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -47,7 +47,7 @@ async def resume(ctx):
         await ctx.send("Nothing is paused")
 
 @bot.command()
-async def play(ctx, song: str):
+async def play(ctx, *, song: str):
     voice_channel = discord.utils.get(ctx.guild.voice_channels, name=ctx.author.voice.channel.name)
     if not voice_channel:
         await ctx.send("You are not connected to a voice channel")
@@ -61,20 +61,34 @@ async def play(ctx, song: str):
             await voice_client.move_to(voice_channel)
 
     query = song
-    with yt_dlp.YoutubeDL({'format': 'bestaudio/best', 'noplaylist': True}) as ydl:
-        try:
+
+    ydl_opts = {'format': 'bestaudio/best', 'noplaylist': True}
+    ydl = yt_dlp.YoutubeDL(ydl_opts)
+
+    try:
+        if ".com" in song or "youtube.com" in song:
+            # If it's a URL, directly use the URL to extract info
+            info = ydl.extract_info(query, download=True)
+        else:
+            # If it's a search term, use 'ytsearch:' to search and extract info
             info = ydl.extract_info(f"ytsearch:{query}", download=True)['entries'][0]
-            filename = ydl.prepare_filename(info)
-            source = discord.FFmpegOpusAudio(filename)
-        except Exception as e:
-            await ctx.send(f"Error: {e}")
-            return
+
+        filename = ydl.prepare_filename(info)
+        source = discord.FFmpegOpusAudio(filename)
+
+        # Now you can use 'source' to play the audio in your Discord voice channel
+        # For example, if you have a voice client named 'vc':
+        # vc.play(source)
+
+    except Exception as e:
+        await ctx.send(f"Error: {e}")
+        return
 
     def after_play(error):
         os.remove(filename)
         if len(queue) > 0:
             next_song = queue.pop(0)
-            bot.loop.create_task(play(ctx, next_song))
+            bot.loop.create_task(play(ctx, song=next_song))  # Pass the song as a keyword argument
 
     if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
         queue.append(song)
@@ -83,7 +97,7 @@ async def play(ctx, song: str):
         voice_client.play(source, after=after_play)
         await ctx.send(f'Now playing: {info["title"]}')
 
-queue = []  # List to store the queued songs
+queue = []
 
 @bot.command()
 async def skip(ctx):
@@ -96,5 +110,12 @@ async def skip(ctx):
             bot.loop.create_task(play(ctx, next_song))
     else:
         await ctx.send("Nothing is currently playing")
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    if bot.voice_clients:
+        # Check if the bot is alone in the voice channel, then cleanup
+        if len(bot.voice_clients[0].channel.members) == 1 and bot.user in bot.voice_clients[0].channel.members:
+            await bot.voice_clients[0].disconnect()
 
 bot.run(TOKEN)

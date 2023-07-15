@@ -4,7 +4,7 @@ import yt_dlp
 import asyncio
 import os
 
-TOKEN = 'Bot Token'
+TOKEN = 'Discord Bot Token'
 
 intents = discord.Intents().all()
 bot = commands.Bot(command_prefix='!', intents=intents)

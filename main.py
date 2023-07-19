@@ -67,18 +67,17 @@ async def play(ctx, *, song: str):
 
     try:
         if ".com" in song or "youtube.com" in song:
-            # If it's a URL, directly use the URL to extract info
+            
             info = ydl.extract_info(query, download=True)
         else:
-            # If it's a search term, use 'ytsearch:' to search and extract info
+           
             info = ydl.extract_info(f"ytsearch:{query}", download=True)['entries'][0]
 
         filename = ydl.prepare_filename(info)
         source = discord.FFmpegOpusAudio(filename)
 
-        # Now you can use 'source' to play the audio in your Discord voice channel
-        # For example, if you have a voice client named 'vc':
-        # vc.play(source)
+      
+
 
     except Exception as e:
         await ctx.send(f"Error: {e}")
@@ -88,8 +87,7 @@ async def play(ctx, *, song: str):
         os.remove(filename)
         if len(queue) > 0:
             next_song = queue.pop(0)
-            bot.loop.create_task(play(ctx, song=next_song))  # Pass the song as a keyword argument
-
+            bot.loop.create_task(play(ctx, song=next_song))  
     if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
         queue.append(song)
         await ctx.send(f'{song} added to the queue')
@@ -114,7 +112,7 @@ async def skip(ctx):
 @bot.event
 async def on_voice_state_update(member, before, after):
     if bot.voice_clients:
-        # Check if the bot is alone in the voice channel, then cleanup
+       
         if len(bot.voice_clients[0].channel.members) == 1 and bot.user in bot.voice_clients[0].channel.members:
             await bot.voice_clients[0].disconnect()
 
